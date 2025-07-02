@@ -3,6 +3,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import config_validation as cv
 from .const import DOMAIN, DEFAULT_HOST, DEFAULT_PORT
 
 class BlindsControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
