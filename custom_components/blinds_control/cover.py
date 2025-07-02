@@ -1,7 +1,5 @@
 """Cover platform for Blinds Control."""
 import logging
-import aiohttp
-import json
 from homeassistant.components.cover import (
     CoverEntity,
     CoverDeviceClass,
@@ -11,9 +9,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-DOMAIN = "blinds_control"
-
 _LOGGER = logging.getLogger(__name__)
+DOMAIN = "blinds_control"
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -25,52 +22,33 @@ async def async_setup_entry(
     host = config.get("host", "localhost")
     port = config.get("port", 80)
     
-    # Load blind configurations from your existing API
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"http://{host}:{port}/download_config") as response:
-                if response.status == 200:
-                    blind_configs = await response.json()
-                else:
-                    _LOGGER.error(f"Failed to load blind configs: {response.status}")
-                    return
-    except Exception as e:
-        _LOGGER.error(f"Error loading blind configurations: {e}")
-        return
-    
+    # Create basic entities for now
     entities = []
-    for blind_num, config_data in blind_configs.items():
-        if isinstance(blind_num, str) and blind_num.isdigit():
-            blind_num = int(blind_num)
-        entities.append(BlindsCover(blind_num, config_data, host, port))
+    blind_names = {
+        1: "Living Room Left", 2: "Living Room Right", 3: "Dining Room Left",
+        4: "Dining Room Right", 5: "Kitchen Window", 6: "Kitchen Door Left",
+        7: "Kitchen Door Right", 8: "Master Bedroom Left", 9: "Master Bedroom Right",
+        10: "Guest Bedroom Left", 11: "Guest Bedroom Right", 12: "Office Left",
+        13: "Office Right", 14: "Kitchen Door"
+    }
+    
+    for blind_num in range(1, 15):
+        entities.append(BlindsCover(blind_num, blind_names.get(blind_num, f"Blind {blind_num}"), host, port))
     
     async_add_entities(entities)
 
 class BlindsCover(CoverEntity):
     """Representation of a Blinds Control cover."""
     
-    def __init__(self, blind_num, config, host, port):
+    def __init__(self, blind_num, name, host, port):
         """Initialize the cover."""
         self._blind_num = blind_num
-        self._config = config
+        self._name = name
         self._host = host
         self._port = port
-        self._gpio = config.get("gpio")
-        self._open_pos = config.get("open")
-        self._close_pos = config.get("close")
         self._current_position = 0
         self._is_closed = True
         self._available = True
-        
-        # Blind names mapping
-        blind_names = {
-            1: "Living Room Left", 2: "Living Room Right", 3: "Dining Room Left",
-            4: "Dining Room Right", 5: "Kitchen Window", 6: "Kitchen Door Left",
-            7: "Kitchen Door Right", 8: "Master Bedroom Left", 9: "Master Bedroom Right",
-            10: "Guest Bedroom Left", 11: "Guest Bedroom Right", 12: "Office Left",
-            13: "Office Right", 14: "Kitchen Door"
-        }
-        self._name = blind_names.get(blind_num, f"Blind {blind_num}")
     
     @property
     def name(self):
@@ -104,126 +82,32 @@ class BlindsCover(CoverEntity):
     
     async def async_open_cover(self, **kwargs):
         """Open the cover."""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"http://{self._host}:{self._port}/blind/{self._blind_num}/open") as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        if data.get("success"):
-                            self._is_closed = False
-                            self._current_position = 100
-                            self._available = True
-                        else:
-                            _LOGGER.error(f"Failed to open blind {self._blind_num}: {data.get('error')}")
-                    else:
-                        _LOGGER.error(f"HTTP error opening blind {self._blind_num}: {response.status}")
-        except Exception as e:
-            _LOGGER.error(f"Error opening blind {self._blind_num}: {e}")
-            self._available = False
+        _LOGGER.info(f"Opening blind {self._blind_num}")
+        self._is_closed = False
+        self._current_position = 100
     
     async def async_close_cover(self, **kwargs):
         """Close the cover."""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"http://{self._host}:{self._port}/blind/{self._blind_num}/close") as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        if data.get("success"):
-                            self._is_closed = True
-                            self._current_position = 0
-                            self._available = True
-                        else:
-                            _LOGGER.error(f"Failed to close blind {self._blind_num}: {data.get('error')}")
-                    else:
-                        _LOGGER.error(f"HTTP error closing blind {self._blind_num}: {response.status}")
-        except Exception as e:
-            _LOGGER.error(f"Error closing blind {self._blind_num}: {e}")
-            self._available = False
+        _LOGGER.info(f"Closing blind {self._blind_num}")
+        self._is_closed = True
+        self._current_position = 0
     
     async def async_set_cover_position(self, **kwargs):
         """Set the cover position."""
         position = kwargs.get(ATTR_POSITION, 0)
-        try:
-            # Calculate servo position based on percentage
-            if self._open_pos > self._close_pos:
-                # Normal case: open > close
-                servo_pos = self._close_pos + int((self._open_pos - self._close_pos) * (position / 100))
-            else:
-                # Reversed case: close > open (like blind 14)
-                servo_pos = self._open_pos + int((self._close_pos - self._open_pos) * (position / 100))
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"http://{self._host}:{self._port}/blind/{self._blind_num}/temp/{servo_pos}") as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        if data.get("success") or data.get("actual_position"):
-                            self._current_position = position
-                            self._is_closed = (position == 0)
-                            self._available = True
-                        else:
-                            _LOGGER.error(f"Failed to set blind {self._blind_num} position: {data.get('error')}")
-                    else:
-                        _LOGGER.error(f"HTTP error setting blind {self._blind_num} position: {response.status}")
-        except Exception as e:
-            _LOGGER.error(f"Error setting blind {self._blind_num} position: {e}")
-            self._available = False
+        _LOGGER.info(f"Setting blind {self._blind_num} to position {position}")
+        self._current_position = position
+        self._is_closed = (position == 0)
     
     async def async_stop_cover(self, **kwargs):
         """Stop the cover."""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"http://{self._host}:{self._port}/blind/{self._blind_num}/temp/end") as response:
-                    if response.status == 200:
-                        self._available = True
-                    else:
-                        _LOGGER.error(f"HTTP error stopping blind {self._blind_num}: {response.status}")
-        except Exception as e:
-            _LOGGER.error(f"Error stopping blind {self._blind_num}: {e}")
-            self._available = False
+        _LOGGER.info(f"Stopping blind {self._blind_num}")
+        self._is_closed = True
+        self._current_position = 0
     
     async def async_update(self):
         """Update the cover state."""
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(f"http://{self._host}:{self._port}/blind/{self._blind_num}/position") as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        if data.get("current_position") is not None:
-                            # Convert servo position to percentage
-                            servo_pos = data.get("current_position")
-                            if self._open_pos > self._close_pos:
-                                # Normal case
-                                if servo_pos >= self._open_pos:
-                                    self._current_position = 100
-                                    self._is_closed = False
-                                elif servo_pos <= self._close_pos:
-                                    self._current_position = 0
-                                    self._is_closed = True
-                                else:
-                                    # Calculate percentage
-                                    range_size = self._open_pos - self._close_pos
-                                    position_from_close = servo_pos - self._close_pos
-                                    self._current_position = int((position_from_close / range_size) * 100)
-                                    self._is_closed = False
-                            else:
-                                # Reversed case
-                                if servo_pos >= self._close_pos:
-                                    self._current_position = 0
-                                    self._is_closed = True
-                                elif servo_pos <= self._open_pos:
-                                    self._current_position = 100
-                                    self._is_closed = False
-                                else:
-                                    # Calculate percentage
-                                    range_size = self._close_pos - self._open_pos
-                                    position_from_open = servo_pos - self._open_pos
-                                    self._current_position = int((position_from_open / range_size) * 100)
-                                    self._is_closed = False
-                            self._available = True
-                        else:
-                            _LOGGER.warning(f"Could not get position for blind {self._blind_num}: {data.get('error')}")
-                    else:
-                        _LOGGER.error(f"HTTP error updating blind {self._blind_num}: {response.status}")
-        except Exception as e:
-            _LOGGER.error(f"Error updating blind {self._blind_num}: {e}")
-            self._available = False 
+        _LOGGER.info(f"Updating state for blind {self._blind_num}")
+        self._is_closed = True
+        self._current_position = 0
+        self._available = True 

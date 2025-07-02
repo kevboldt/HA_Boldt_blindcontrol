@@ -3,8 +3,8 @@
   "name": "Blinds Control",
   "documentation": "https://github.com/yourusername/blinds_integration",
   "dependencies": [],
-  "codeowners": ["@yourusername"],
-  "requirements": ["aiohttp"],
+  "codeowners": [],
+  "requirements": [],
   "iot_class": "local_push",
   "version": "1.0.0"
 } 
