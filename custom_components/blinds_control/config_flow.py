@@ -3,8 +3,8 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers import config_validation as cv
-from .const import DOMAIN, DEFAULT_HOST, DEFAULT_PORT
+
+DOMAIN = "blinds_control"
 
 class BlindsControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Blinds Control."""
@@ -22,8 +22,8 @@ class BlindsControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Required("host", default=DEFAULT_HOST): str,
-                vol.Required("port", default=DEFAULT_PORT): int,
+                vol.Required("host", default="localhost"): str,
+                vol.Required("port", default=80): int,
             })
         )
     
@@ -48,7 +48,7 @@ class BlindsControlOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
-                vol.Required("host", default=self.config_entry.data.get("host", DEFAULT_HOST)): str,
-                vol.Required("port", default=self.config_entry.data.get("port", DEFAULT_PORT)): int,
+                vol.Required("host", default=self.config_entry.data.get("host", "localhost")): str,
+                vol.Required("port", default=self.config_entry.data.get("port", 80)): int,
             })
         ) 

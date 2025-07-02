@@ -1,8 +1,8 @@
 """The Blinds Control integration."""
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from .const import DOMAIN
 
+DOMAIN = "blinds_control"
 PLATFORMS: list[str] = ["cover"]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

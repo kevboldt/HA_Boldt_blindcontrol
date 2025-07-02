@@ -10,7 +10,8 @@ from homeassistant.components.cover import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from .const import DOMAIN, DEFAULT_HOST, DEFAULT_PORT
+
+DOMAIN = "blinds_control"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,8 +22,8 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Blinds Control cover platform."""
     config = config_entry.data
-    host = config.get("host", DEFAULT_HOST)
-    port = config.get("port", DEFAULT_PORT)
+    host = config.get("host", "localhost")
+    port = config.get("port", 80)
     
     # Load blind configurations from your existing API
     try:
