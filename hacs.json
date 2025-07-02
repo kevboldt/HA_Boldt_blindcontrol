@@ -1,0 +1,7 @@
+{
+  "name": "Blinds Control",
+  "render_readme": true,
+  "domains": ["cover"],
+  "homeassistant": "2023.8.0",
+  "iot_class": "Local Push"
+} 
