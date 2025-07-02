@@ -1,0 +1,7 @@
+{
+  "name": "Boldt Blinds",
+  "render_readme": true,
+  "domains": ["boldt_blinds"],
+  "homeassistant": "2023.8.0",
+  "iot_class": "Local Push"
+} 
